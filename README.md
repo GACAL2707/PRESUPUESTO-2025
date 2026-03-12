@@ -1,10 +1,5 @@
 <html lang="es">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
-</style>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Presupuesto 2025 – OEIT DIRESA</title>
@@ -139,7 +134,7 @@
     display: flex; flex-direction: column; gap: 3px;
   }
   .kpi .kpi-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
-  .kpi .kpi-value { font-size: 21px; font-weight: 700; color: var(--primary); line-height: 1.1; }
+  .kpi .kpi-value { font-size: 16px; font-weight: 700; color: var(--primary); line-height: 1.2; }
   .kpi .kpi-sub { font-size: 10.5px; color: var(--text-muted); }
   .kpi .kpi-trend { font-size: 10.5px; font-weight: 600; }
   .kpi .kpi-trend.up { color: var(--green); }
@@ -280,7 +275,7 @@
       <span class="kpi-label">PIM Total</span>
       <span class="kpi-value" id="kpi-pim">—</span>
       <span class="kpi-sub">Presupuesto Modificado</span>
-      <span class="kpi-trend up" id="kpi-pim-sub">▲ PIA: S/ 200.6M</span>
+      <span class="kpi-trend up" id="kpi-pim-sub">▲ PIA: S/ 200,969,446</span>
     </div>
     <div class="kpi green-top">
       <span class="kpi-label">Devengado</span>
@@ -434,8 +429,8 @@ let selectedCodes = new Set(raw.map(r => r.code));
 let minPct = 0;
 
 // ── HELPERS ──
-const fmtM = n => 'S/ ' + (n/1e6).toFixed(1) + 'M';
 const fmtN = n => n.toLocaleString('es-PE');
+const fmtS = n => 'S/ ' + n.toLocaleString('es-PE');
 const PRIMARY = '#042FA5';
 const gridColor = '#E8EDF5';
 const donutPalette = [PRIMARY,'#1a47c4','#3558c8','#4a6dd9','#6080e0',
@@ -501,8 +496,8 @@ function updateKpis(data) {
   const totalDev = data.reduce((s,r)=>s+r.dev,0);
   const avg = (data.reduce((s,r)=>s+r.pct,0)/data.length).toFixed(1);
   const low = data.filter(r=>r.pct<98);
-  document.getElementById('kpi-pim').textContent    = fmtM(totalPim);
-  document.getElementById('kpi-dev').textContent    = fmtM(totalDev);
+  document.getElementById('kpi-pim').textContent    = fmtS(totalPim);
+  document.getElementById('kpi-dev').textContent    = fmtS(totalDev);
   document.getElementById('kpi-avg').textContent    = avg + '%';
   document.getElementById('kpi-low').textContent    = low.length;
   document.getElementById('kpi-low-names').textContent = low.map(r=>r.code).join(' · ') || 'Ninguno';
@@ -552,16 +547,22 @@ function buildCharts(data) {
     data: {
       labels: codes,
       datasets: [
-        { label: 'PIM',       data: data.map(r=>+(r.pim/1e6).toFixed(2)), backgroundColor: PRIMARY+'cc', borderRadius: 3 },
-        { label: 'Devengado', data: data.map(r=>+(r.dev/1e6).toFixed(2)), backgroundColor: '#63BE7B',    borderRadius: 3 },
+        { label: 'PIM',       data: data.map(r => r.pim), backgroundColor: PRIMARY+'cc', borderRadius: 3 },
+        { label: 'Devengado', data: data.map(r => r.dev), backgroundColor: '#63BE7B',    borderRadius: 3 },
       ]
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: true,
       aspectRatio: Math.max(1.5, data.length * 0.23),
-      plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ` S/ ${ctx.raw.toFixed(1)}M` } } },
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ` S/ ${ctx.raw.toLocaleString('es-PE')}` } }
+      },
       scales: {
-        x: { grid: { color: gridColor }, ticks: { callback: v => 'S/' + v + 'M' } },
+        x: {
+          grid: { color: gridColor },
+          ticks: { callback: v => 'S/ ' + Number(v).toLocaleString('es-PE'), maxTicksLimit: 6 }
+        },
         y: { grid: { display: false } }
       }
     }
@@ -573,7 +574,7 @@ function buildCharts(data) {
     type: 'doughnut',
     data: {
       labels: data.map(r => r.code),
-      datasets: [{ data: data.map(r=>+(r.pim/1e6).toFixed(2)),
+      datasets: [{ data: data.map(r => r.pim),
         backgroundColor: donutPalette.slice(0, data.length),
         borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }]
     },
@@ -581,7 +582,7 @@ function buildCharts(data) {
       responsive: true, cutout: '60%',
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${data[ctx.dataIndex].code}: S/${ctx.raw.toFixed(1)}M · ${(ctx.raw*1e6/totalPim*100).toFixed(1)}%` } }
+        tooltip: { callbacks: { label: ctx => ` ${data[ctx.dataIndex].code}: S/ ${ctx.raw.toLocaleString('es-PE')} · ${(ctx.raw/totalPim*100).toFixed(1)}%` } }
       }
     }
   });
@@ -602,15 +603,21 @@ function buildCharts(data) {
     data: {
       labels: codes,
       datasets: [
-        { label: 'Devengado',  data: data.map(r=>+(r.dev/1e6).toFixed(2)),  backgroundColor: PRIMARY+'dd', borderRadius: 4 },
-        { label: 'Compromiso', data: data.map(r=>+(r.comp/1e6).toFixed(2)), backgroundColor: '#7a9ae8bb',  borderRadius: 4 },
+        { label: 'Devengado',  data: data.map(r => r.dev),  backgroundColor: PRIMARY+'dd', borderRadius: 4 },
+        { label: 'Compromiso', data: data.map(r => r.comp), backgroundColor: '#7a9ae8bb',  borderRadius: 4 },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: true, aspectRatio: 2,
-      plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => ` S/ ${ctx.raw.toFixed(1)}M` } } },
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => ` S/ ${ctx.raw.toLocaleString('es-PE')}` } }
+      },
       scales: {
-        y: { grid: { color: gridColor }, ticks: { callback: v => 'S/' + v + 'M' } },
+        y: {
+          grid: { color: gridColor },
+          ticks: { callback: v => 'S/ ' + Number(v).toLocaleString('es-PE'), maxTicksLimit: 6 }
+        },
         x: { grid: { display: false } }
       }
     }
